@@ -990,8 +990,10 @@
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({ 
-                        username: selectedRole, 
-                        role: selectedRole 
+                        identifier: selectedRole,
+                        password: selectedRole === 'admin' 
+                          ? 'Admin@123' 
+                          : (selectedRole === 'customer' ? 'Customer@123' : 'Guest@123')
                     })
                 });
                 
