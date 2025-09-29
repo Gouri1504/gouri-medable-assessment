@@ -1,0 +1,1334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔌 Real-time E-commerce Demo</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1.5rem 0;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 700;
+        }
+
+        .auto-login-badge {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .main-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .section {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 2rem;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .section:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 48px rgba(0, 0, 0, 0.15);
+        }
+
+        .section h3 {
+            color: #2c3e50;
+            margin-bottom: 1.5rem;
+            font-size: 1.4rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .section h4 {
+            color: #34495e;
+            margin: 1.5rem 0 1rem 0;
+            font-size: 1.1rem;
+            font-weight: 500;
+        }
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .status {
+            padding: 1rem;
+            border-radius: 12px;
+            font-weight: 500;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .connected {
+            background: linear-gradient(135deg, #d4edda, #c3e6cb);
+            color: #155724;
+            border: 2px solid #28a745;
+        }
+
+        .disconnected {
+            background: linear-gradient(135deg, #f8d7da, #f5c6cb);
+            color: #721c24;
+            border: 2px solid #dc3545;
+        }
+
+        .error {
+            background: linear-gradient(135deg, #f8d7da, #f5c6cb);
+            color: #721c24;
+            border: 2px solid #dc3545;
+        }
+
+        .connecting {
+            background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+            color: #856404;
+            border: 2px solid #ffc107;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+
+        input {
+            padding: 0.75rem 1rem;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+            flex: 1;
+            min-width: 120px;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            margin: 0.25rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #28a745, #20c997);
+        }
+
+        .btn-success:hover:not(:disabled) {
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #dc3545, #e74c3c);
+        }
+
+        .btn-danger:hover:not(:disabled) {
+            box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #ffc107, #ffb300);
+            color: #212529;
+        }
+
+        .btn-warning:hover:not(:disabled) {
+            box-shadow: 0 4px 12px rgba(255, 193, 7, 0.4);
+        }
+
+        .log-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        .log-section {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 2rem;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .log-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .log {
+            background: linear-gradient(135deg, #1a1a1a, #2d2d2d);
+            color: #00ff88;
+            padding: 1.5rem;
+            border-radius: 12px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            height: 400px;
+            overflow-y: auto;
+            font-size: 0.9rem;
+            line-height: 1.4;
+            border: 2px solid #333;
+            box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .log::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .log::-webkit-scrollbar-track {
+            background: #333;
+        }
+
+        .log::-webkit-scrollbar-thumb {
+            background: #00ff88;
+            border-radius: 4px;
+        }
+
+        .role-selector {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .role-btn {
+            padding: 0.5rem 1rem;
+            border: 2px solid #e9ecef;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .role-btn.active {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border-color: #667eea;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+            border: 2px solid #dee2e6;
+        }
+
+        .stat-number {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            color: #6c757d;
+            margin-top: 0.25rem;
+        }
+
+        .guidance-panel {
+            background: linear-gradient(135deg, #e3f2fd, #f3e5f5);
+            border: 2px solid #667eea;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .guidance-panel h4 {
+            color: #667eea;
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+        }
+
+        .guidance-steps {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .step {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem;
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .step.completed {
+            background: linear-gradient(135deg, #d4edda, #c3e6cb);
+            border: 2px solid #28a745;
+        }
+
+        .step.active {
+            background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+            border: 2px solid #ffc107;
+            animation: glow 2s infinite;
+        }
+
+        @keyframes glow {
+            0%, 100% { box-shadow: 0 0 5px rgba(255, 193, 7, 0.5); }
+            50% { box-shadow: 0 0 20px rgba(255, 193, 7, 0.8); }
+        }
+
+        .step i {
+            width: 20px;
+            text-align: center;
+        }
+
+        .step.completed i {
+            color: #28a745;
+        }
+
+        .step.active i {
+            color: #ffc107;
+        }
+
+        .test-explanation {
+            background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+            border: 2px solid #ffc107;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .test-explanation p {
+            margin: 0;
+            color: #856404;
+            font-weight: 500;
+        }
+
+        .test-explanation i {
+            color: #ffc107;
+        }
+
+        .event-highlight {
+            background: linear-gradient(135deg, #d1ecf1, #bee5eb) !important;
+            border: 2px solid #17a2b8 !important;
+            animation: highlight 3s ease-out;
+        }
+
+        @keyframes highlight {
+            0% { transform: scale(1.02); box-shadow: 0 0 20px rgba(23, 162, 184, 0.6); }
+            100% { transform: scale(1); box-shadow: none; }
+        }
+
+        .subsection {
+            margin-bottom: 2rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        .subsection:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+
+        .help-text {
+            color: #6c757d;
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+            line-height: 1.4;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 0.5rem;
+            font-size: 0.95rem;
+        }
+
+        .form-group label i {
+            color: #667eea;
+            margin-right: 0.5rem;
+            width: 16px;
+        }
+
+        .form-group small {
+            display: block;
+            color: #6c757d;
+            font-size: 0.8rem;
+            margin-top: 0.25rem;
+            font-style: italic;
+        }
+
+        .role-info {
+            text-align: left;
+            margin-left: 0.5rem;
+        }
+
+        .role-info strong {
+            display: block;
+            font-size: 0.9rem;
+        }
+
+        .role-info small {
+            display: block;
+            color: #6c757d;
+            font-size: 0.75rem;
+            margin-top: 0.25rem;
+        }
+
+        .status-card {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .status-label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #2c3e50;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .quick-actions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .quick-btn {
+            padding: 1rem;
+            border-radius: 12px;
+            border: 2px solid #e9ecef;
+            background: linear-gradient(135deg, #ffffff, #f8f9fa);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            text-align: left;
+        }
+
+        .quick-btn:hover {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border-color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .quick-btn.btn-warning {
+            background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+            border-color: #ffc107;
+        }
+
+        .quick-btn.btn-warning:hover {
+            background: linear-gradient(135deg, #ffc107, #ffb300);
+            border-color: #ffb300;
+            color: #212529;
+        }
+
+        .quick-btn i {
+            font-size: 1.5rem;
+            min-width: 24px;
+        }
+
+        .quick-btn-info strong {
+            display: block;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .quick-btn-info small {
+            display: block;
+            font-size: 0.75rem;
+            opacity: 0.8;
+            margin-top: 0.25rem;
+        }
+
+        @media (max-width: 768px) {
+            .main-container {
+                grid-template-columns: 1fr;
+                padding: 0 1rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .input-group {
+                flex-direction: column;
+            }
+            
+            .status-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .role-selector {
+                flex-direction: column;
+            }
+
+            .quick-actions-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .guidance-steps {
+                gap: 0.5rem;
+            }
+
+            .step {
+                padding: 0.5rem;
+                font-size: 0.9rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-content">
+            <h1><i class="fas fa-bolt"></i> Real-time E-commerce Demo</h1>
+            <div class="auto-login-badge">
+                <i class="fas fa-magic"></i>
+                Auto-Login Enabled
+            </div>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <div class="section">
+            <h3><i class="fas fa-user-shield"></i> Authentication & Connection Status</h3>
+            
+            <div class="subsection">
+                <h4><i class="fas fa-users"></i> Select Your Role</h4>
+                <p class="help-text">Choose your role to see different permissions and features. Admin can update products, Customer can manage cart.</p>
+                <div class="role-selector">
+                    <div class="role-btn active" data-role="admin" onclick="selectRole('admin')">
+                        <i class="fas fa-crown"></i>
+                        <div class="role-info">
+                            <strong>Admin</strong>
+                            <small>Full access to all features</small>
+                        </div>
+                    </div>
+                    <div class="role-btn" data-role="customer" onclick="selectRole('customer')">
+                        <i class="fas fa-user"></i>
+                        <div class="role-info">
+                            <strong>Customer</strong>
+                            <small>Cart and product viewing</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="subsection">
+                <h4><i class="fas fa-signal"></i> Connection Status</h4>
+                <div class="status-grid">
+                    <div class="status-card">
+                        <div class="status-label">Authentication</div>
+                        <div id="authStatus" class="status connecting">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            Auto-connecting...
+                        </div>
+                    </div>
+                    <div class="status-card">
+                        <div class="status-label">WebSocket</div>
+                        <div id="connectionStatus" class="status disconnected">
+                            <i class="fas fa-plug"></i>
+                            Disconnected
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="subsection">
+                <h4><i class="fas fa-power-off"></i> Connection Control</h4>
+                <p class="help-text">Manage your WebSocket connection. Connection happens automatically after authentication.</p>
+                <div class="input-group">
+                    <button onclick="toggleConnection()" id="toggleBtn" class="btn btn-success">
+                        <i class="fas fa-plug"></i>
+                        <span id="toggleText">Connect</span>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="subsection">
+                <h4><i class="fas fa-bell"></i> Product Notification Settings</h4>
+                <p class="help-text">Subscribe to real-time updates for specific products. You'll receive notifications when inventory changes.</p>
+                
+                <div class="form-group">
+                    <label for="productIds"><i class="fas fa-list"></i> Product IDs to Monitor</label>
+                    <input type="text" id="productIds" placeholder="Enter comma-separated product IDs (e.g., 1,2,3,4,5)" value="1,2,3,4,5">
+                    <small class="help-text">Enter the IDs of products you want to receive real-time updates for</small>
+                </div>
+                
+                <div class="input-group">
+                    <button onclick="subscribeToInventory()" id="subscribeBtn" class="btn btn-success" disabled>
+                        <i class="fas fa-bell"></i>
+                        Subscribe to Updates
+                    </button>
+                    <button onclick="unsubscribeFromInventory()" id="unsubscribeBtn" class="btn btn-warning" disabled>
+                        <i class="fas fa-bell-slash"></i>
+                        Unsubscribe
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3><i class="fas fa-cogs"></i> Live Testing & Guidance</h3>
+            
+            <div class="guidance-panel">
+                <h4><i class="fas fa-info-circle"></i> How to Test Real-time Events</h4>
+                <div class="guidance-steps">
+                    <div class="step completed" id="step1">
+                        <i class="fas fa-check"></i>
+                        <span>Connected & Subscribed to Products 1-5</span>
+                    </div>
+                    <div class="step" id="step2">
+                        <i class="fas fa-circle"></i>
+                        <span>Update a product to see inventory events</span>
+                    </div>
+                    <div class="step" id="step3">
+                        <i class="fas fa-circle"></i>
+                        <span>Add items to cart to see cart events</span>
+                    </div>
+                    <div class="step" id="step4">
+                        <i class="fas fa-circle"></i>
+                        <span>Switch roles to see different permissions</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number" id="eventCount">0</div>
+                    <div class="stat-label">Real-time Events</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="connectionTime">0s</div>
+                    <div class="stat-label">Connected Time</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="inventoryEvents">0</div>
+                    <div class="stat-label">Inventory Updates</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="cartEvents">0</div>
+                    <div class="stat-label">Cart Updates</div>
+                </div>
+            </div>
+
+            <div class="subsection">
+                <h4><i class="fas fa-box"></i> Test Inventory Updates (Admin Only)</h4>
+                <div class="test-explanation">
+                    <p><i class="fas fa-lightbulb"></i> <strong>How it works:</strong> When you update a product's inventory, all connected users subscribed to that product will receive a real-time notification instantly!</p>
+                </div>
+                
+                <div class="form-group">
+                    <label for="testProductId"><i class="fas fa-tag"></i> Product ID</label>
+                    <input type="text" id="testProductId" placeholder="Enter product ID (1-1000)" value="1">
+                    <small class="help-text">ID of the product you want to update</small>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="testStock"><i class="fas fa-warehouse"></i> New Stock Level</label>
+                        <input type="number" id="testStock" placeholder="Stock quantity" value="75" min="0" max="1000">
+                        <small class="help-text">Available inventory count</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="testPrice"><i class="fas fa-dollar-sign"></i> New Price ($)</label>
+                        <input type="number" id="testPrice" placeholder="Product price" value="299.99" min="0" step="0.01">
+                        <small class="help-text">Product selling price</small>
+                    </div>
+                </div>
+                
+                <button onclick="updateProduct()" class="btn btn-primary" id="updateBtn">
+                    <i class="fas fa-edit"></i>
+                    Update Product & Trigger Real-time Event
+                </button>
+            </div>
+            
+            <div class="subsection">
+                <h4><i class="fas fa-shopping-cart"></i> Test Cart Operations</h4>
+                <div class="test-explanation">
+                    <p><i class="fas fa-lightbulb"></i> <strong>How it works:</strong> When you add items to your cart, you'll see real-time updates showing the cart total and item count!</p>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="cartProductId"><i class="fas fa-shopping-bag"></i> Product ID</label>
+                        <input type="text" id="cartProductId" placeholder="Enter product ID" value="2">
+                        <small class="help-text">ID of product to add to cart</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="cartQuantity"><i class="fas fa-sort-numeric-up"></i> Quantity</label>
+                        <input type="number" id="cartQuantity" placeholder="Quantity" value="3" min="1" max="100">
+                        <small class="help-text">Number of items to add</small>
+                    </div>
+                </div>
+                
+                <button onclick="addToCart()" class="btn btn-success" id="cartBtn">
+                    <i class="fas fa-plus"></i>
+                    Add to Cart & See Real-time Update
+                </button>
+            </div>
+
+            <div class="subsection">
+                <h4><i class="fas fa-zap"></i> Quick Test Actions</h4>
+                <p class="help-text">Use these buttons for instant testing with random values. Perfect for demonstrating real-time functionality!</p>
+                
+                <div class="quick-actions-grid">
+                    <button class="quick-btn" onclick="quickTest('inventory')" title="Updates a random product with random stock/price">
+                        <i class="fas fa-box"></i>
+                        <div class="quick-btn-info">
+                            <strong>Quick Inventory Test</strong>
+                            <small>Random product update</small>
+                        </div>
+                    </button>
+                    
+                    <button class="quick-btn" onclick="quickTest('cart')" title="Adds a random product to cart">
+                        <i class="fas fa-cart-plus"></i>
+                        <div class="quick-btn-info">
+                            <strong>Quick Cart Test</strong>
+                            <small>Add random item to cart</small>
+                        </div>
+                    </button>
+                    
+                    <button class="quick-btn" onclick="quickTest('multiple')" title="Runs multiple events in sequence">
+                        <i class="fas fa-rocket"></i>
+                        <div class="quick-btn-info">
+                            <strong>Multiple Events</strong>
+                            <small>Rapid event sequence</small>
+                        </div>
+                    </button>
+                    
+                    <button class="quick-btn btn-warning" onclick="clearAllStats()" title="Reset all statistics and guidance">
+                        <i class="fas fa-refresh"></i>
+                        <div class="quick-btn-info">
+                            <strong>Reset Everything</strong>
+                            <small>Clear stats & guidance</small>
+                        </div>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="log-container">
+        <div class="log-section">
+            <div class="log-header">
+                <h3><i class="fas fa-terminal"></i> Real-time Event Log</h3>
+                <button onclick="clearLog()" class="btn btn-warning">
+                    <i class="fas fa-trash"></i>
+                    Clear Log
+                </button>
+            </div>
+            <div id="eventLog" class="log">EVENT 1: [Loading...] 🚀 WebSocket Demo initialized. Auto-connecting as admin...<br><br></div>
+        </div>
+    </div>
+
+    <script>
+        let socket = null;
+        let authToken = '';
+        let selectedRole = 'admin';
+        let eventCount = 0;
+        let inventoryEventCount = 0;
+        let cartEventCount = 0;
+        let connectionStartTime = null;
+        let connectionTimer = null;
+        let hasUpdatedProduct = false;
+        let hasAddedToCart = false;
+        let hasConnected = false;
+
+        function log(message, eventType = 'general') {
+            const logElement = document.getElementById('eventLog');
+            const timestamp = new Date().toLocaleTimeString();
+            
+            // Update event counters first
+            eventCount++;
+            
+            // Format log entry with event number and proper line breaks using <br> tags
+            const eventNumber = eventCount;
+            const logEntry = `EVENT ${eventNumber}: [${timestamp}] ${message}<br><br>`;
+            logElement.innerHTML += logEntry;
+            logElement.scrollTop = logElement.scrollHeight;
+            
+            // Update event counter display
+            document.getElementById('eventCount').textContent = eventCount;
+            
+            // Track specific event types
+            if (eventType === 'inventory') {
+                inventoryEventCount++;
+                document.getElementById('inventoryEvents').textContent = inventoryEventCount;
+                updateGuidanceStep(2, true);
+                highlightStatCard('inventoryEvents');
+            } else if (eventType === 'cart') {
+                cartEventCount++;
+                document.getElementById('cartEvents').textContent = cartEventCount;
+                updateGuidanceStep(3, true);
+                highlightStatCard('cartEvents');
+            }
+
+            // Highlight the event counter
+            highlightStatCard('eventCount');
+        }
+
+        function highlightStatCard(cardId) {
+            const card = document.getElementById(cardId).parentElement;
+            card.classList.add('event-highlight');
+            setTimeout(() => {
+                card.classList.remove('event-highlight');
+            }, 3000);
+        }
+
+        function updateGuidanceStep(stepNum, completed) {
+            const step = document.getElementById(`step${stepNum}`);
+            if (step && completed) {
+                step.classList.add('completed');
+                step.querySelector('i').className = 'fas fa-check';
+            }
+        }
+
+        function setActiveStep(stepNum) {
+            // Remove active from all steps
+            document.querySelectorAll('.step').forEach(step => step.classList.remove('active'));
+            
+            // Add active to current step
+            const step = document.getElementById(`step${stepNum}`);
+            if (step && !step.classList.contains('completed')) {
+                step.classList.add('active');
+                step.querySelector('i').className = 'fas fa-spinner fa-spin';
+            }
+        }
+
+        function clearLog() {
+            eventCount = 0; // Reset event counter when clearing log
+            document.getElementById('eventLog').innerHTML = 'EVENT 1: [' + new Date().toLocaleTimeString() + '] 📋 Log cleared - Ready for new events<br><br>';
+            eventCount = 1; // Start from 1 after clearing
+            document.getElementById('eventCount').textContent = eventCount;
+        }
+
+        function clearAllStats() {
+            eventCount = 0;
+            inventoryEventCount = 0;
+            cartEventCount = 0;
+            document.getElementById('eventCount').textContent = eventCount;
+            document.getElementById('inventoryEvents').textContent = inventoryEventCount;
+            document.getElementById('cartEvents').textContent = cartEventCount;
+            
+            // Reset guidance steps
+            hasUpdatedProduct = false;
+            hasAddedToCart = false;
+            document.querySelectorAll('.step').forEach((step, index) => {
+                if (index > 0) { // Keep first step completed
+                    step.classList.remove('completed', 'active');
+                    step.querySelector('i').className = 'fas fa-circle';
+                }
+            });
+            
+            // Clear log and reset counters
+            eventCount = 0;
+            document.getElementById('eventLog').innerHTML = '';
+            log('📊 Statistics and guidance reset - Demo restarted');
+        }
+
+        function selectRole(role) {
+            selectedRole = role;
+            document.querySelectorAll('.role-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector(`[data-role="${role}"]`).classList.add('active');
+            
+            // If already connected, reconnect with new role
+            if (authToken && socket && socket.connected) {
+                log(`🔄 Switching to ${role} role...`);
+                disconnect();
+                setTimeout(() => autoLogin(), 1000);
+            } else if (!authToken) {
+                autoLogin();
+            }
+        }
+
+        async function autoLogin() {
+            try {
+                updateAuthStatus('connecting', '<i class="fas fa-spinner fa-spin"></i> Connecting...');
+                
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ 
+                        username: selectedRole, 
+                        role: selectedRole 
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    authToken = data.token;
+                    updateAuthStatus('connected', `<i class="fas fa-check-circle"></i> ${data.user.username} (${data.user.role})`);
+                    log(`✅ Auto-authenticated as ${data.user.username} (${data.user.role})`);
+                    
+                    // Auto-connect to WebSocket after successful login
+                    setTimeout(() => connect(), 500);
+                } else {
+                    throw new Error(data.error || 'Auto-login failed');
+                }
+            } catch (error) {
+                log(`❌ Auto-login failed: ${error.message}`);
+                updateAuthStatus('error', `<i class="fas fa-exclamation-triangle"></i> Auth failed`);
+            }
+        }
+
+        function updateAuthStatus(type, text) {
+            const authStatus = document.getElementById('authStatus');
+            authStatus.className = `status ${type}`;
+            authStatus.innerHTML = text;
+        }
+
+        function updateConnectionStatus(type, text) {
+            const connectionStatus = document.getElementById('connectionStatus');
+            connectionStatus.className = `status ${type}`;
+            connectionStatus.innerHTML = text;
+        }
+
+        function startConnectionTimer() {
+            connectionStartTime = Date.now();
+            connectionTimer = setInterval(() => {
+                const elapsed = Math.floor((Date.now() - connectionStartTime) / 1000);
+                document.getElementById('connectionTime').textContent = elapsed + 's';
+            }, 1000);
+        }
+
+        function stopConnectionTimer() {
+            if (connectionTimer) {
+                clearInterval(connectionTimer);
+                connectionTimer = null;
+            }
+            document.getElementById('connectionTime').textContent = '0s';
+        }
+
+        function toggleConnection() {
+            if (socket && socket.connected) {
+                disconnect();
+            } else {
+                connect();
+            }
+        }
+
+        function connect() {
+            if (!authToken) {
+                log('❌ Please authenticate first');
+                autoLogin();
+                return;
+            }
+
+            updateConnectionStatus('connecting', '<i class="fas fa-spinner fa-spin"></i> Connecting...');
+            
+            socket = io({
+                auth: {
+                    token: authToken
+                }
+            });
+
+            socket.on('connect', () => {
+                log('✅ Connected to WebSocket server');
+                updateConnectionStatus('connected', '<i class="fas fa-wifi"></i> Connected');
+                hasConnected = true;
+                
+                // Update UI - Enable all connection-dependent buttons
+                document.getElementById('toggleBtn').innerHTML = '<i class="fas fa-times"></i> <span>Disconnect</span>';
+                document.getElementById('toggleBtn').className = 'btn btn-danger';
+                document.getElementById('subscribeBtn').disabled = false;
+                document.getElementById('unsubscribeBtn').disabled = false;
+                
+                startConnectionTimer();
+                
+                // Auto-subscribe to default products
+                setTimeout(() => {
+                    subscribeToInventory();
+                }, 1000);
+            });
+
+            socket.on('disconnect', (reason) => {
+                log(`❌ Disconnected: ${reason}`);
+                updateConnectionStatus('disconnected', `<i class="fas fa-plug"></i> Disconnected`);
+                
+                // Update UI - Disable connection-dependent buttons
+                document.getElementById('toggleBtn').innerHTML = '<i class="fas fa-plug"></i> <span>Connect</span>';
+                document.getElementById('toggleBtn').className = 'btn btn-success';
+                document.getElementById('subscribeBtn').disabled = true;
+                document.getElementById('unsubscribeBtn').disabled = true;
+                
+                stopConnectionTimer();
+            });
+
+            socket.on('connected', (data) => {
+                log(`🎉 Welcome! ${data.message} (Role: ${data.role})`);
+            });
+
+            socket.on('inventory_update', (data) => {
+                const stockInfo = data.product?.stock !== undefined ? `Stock: ${data.product.stock}` : '';
+                const priceInfo = data.product?.price !== undefined ? `Price: $${data.product.price}` : '';
+                const changeInfo = data.changes ? 
+                    `${data.changes.stockChanged ? '📦' : ''}${data.changes.priceChanged ? '💰' : ''}` : '';
+                log(`📦 INVENTORY UPDATE: ${data.action.toUpperCase()} - Product ${data.productId} ${changeInfo} - ${stockInfo} ${priceInfo}`.trim(), 'inventory');
+                
+                // Show next step guidance
+                if (!hasAddedToCart) {
+                    setActiveStep(3);
+                }
+            });
+
+            socket.on('cart_update', (data) => {
+                log(`🛒 CART UPDATE: ${data.action.replace('_', ' ').toUpperCase()} - Total: $${data.cart?.total || 0} - Items: ${data.cart?.itemCount || 0}`, 'cart');
+                hasAddedToCart = true;
+                
+                // Show role switching guidance
+                setActiveStep(4);
+            });
+
+            socket.on('admin_notification', (data) => {
+                log(`🔔 ADMIN: ${data.message} (by ${data.createdBy || data.updatedBy || data.deletedBy || 'system'})`);
+            });
+
+            socket.on('inventory_subscribed', (data) => {
+                log(`✅ Subscribed to inventory updates for products: ${data.productIds.join(', ')}`);
+                document.getElementById('unsubscribeBtn').disabled = false;
+                
+                // Mark first step as completed and activate second step
+                updateGuidanceStep(1, true);
+                if (!hasUpdatedProduct) {
+                    setActiveStep(2);
+                }
+            });
+
+            socket.on('inventory_unsubscribed', (data) => {
+                log(`❌ Unsubscribed from inventory updates for products: ${data.productIds.join(', ')}`);
+                document.getElementById('unsubscribeBtn').disabled = true;
+            });
+
+            socket.on('error', (data) => {
+                log(`❌ WebSocket error: ${data.message}`);
+            });
+
+            socket.on('connect_error', (error) => {
+                log(`❌ Connection error: ${error.message}`);
+                updateConnectionStatus('error', `<i class="fas fa-exclamation-triangle"></i> Connection failed`);
+            });
+        }
+
+        function disconnect() {
+            if (socket) {
+                socket.disconnect();
+                socket = null;
+                stopConnectionTimer();
+            }
+        }
+
+        function subscribeToInventory() {
+            if (!socket) {
+                log('❌ WebSocket not connected');
+                return;
+            }
+            
+            const productIds = document.getElementById('productIds').value
+                .split(',')
+                .map(id => id.trim())
+                .filter(id => id);
+            
+            if (productIds.length === 0) {
+                log('❌ Please enter at least one product ID');
+                return;
+            }
+            
+            socket.emit('subscribe_inventory', { productIds });
+            log(`📡 Requesting subscription to products: ${productIds.join(', ')}`);
+        }
+
+        function unsubscribeFromInventory() {
+            if (!socket) {
+                log('❌ WebSocket not connected');
+                return;
+            }
+            
+            const productIds = document.getElementById('productIds').value
+                .split(',')
+                .map(id => id.trim())
+                .filter(id => id);
+            
+            socket.emit('unsubscribe_inventory', { productIds });
+            log(`📡 Requesting unsubscription from products: ${productIds.join(', ')}`);
+        }
+
+        async function updateProduct() {
+            if (!authToken) {
+                log('❌ Please authenticate first');
+                return;
+            }
+
+            const productId = document.getElementById('testProductId').value;
+            const stock = document.getElementById('testStock').value;
+            const price = document.getElementById('testPrice').value;
+            
+            if (!productId) {
+                log('❌ Please enter a product ID');
+                return;
+            }
+            
+            try {
+                log(`⏳ Updating product ${productId}...`);
+                const updateData = {};
+                if (stock) updateData.stock = parseInt(stock);
+                if (price) updateData.price = parseFloat(price);
+                
+                const response = await fetch(`/api/products/${productId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify(updateData)
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    log(`✅ Product ${productId} updated successfully (Stock: ${updateData.stock || 'unchanged'}, Price: $${updateData.price || 'unchanged'})`);
+                    hasUpdatedProduct = true;
+                    updateGuidanceStep(2, true);
+                } else {
+                    throw new Error(data.error || 'Update failed');
+                }
+            } catch (error) {
+                log(`❌ Product update failed: ${error.message}`);
+            }
+        }
+
+        async function addToCart() {
+            if (!authToken) {
+                log('❌ Please authenticate first');
+                return;
+            }
+
+            const productId = document.getElementById('cartProductId').value;
+            const quantity = document.getElementById('cartQuantity').value;
+            
+            if (!productId || !quantity) {
+                log('❌ Please enter product ID and quantity');
+                return;
+            }
+            
+            try {
+                log(`⏳ Adding ${quantity}x Product ${productId} to cart...`);
+                const response = await fetch('/api/cart', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({ productId, quantity: parseInt(quantity) })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    log(`✅ Added ${quantity}x Product ${productId} to cart (Total: $${data.cart.total})`);
+                } else {
+                    throw new Error(data.error || 'Add to cart failed');
+                }
+            } catch (error) {
+                log(`❌ Add to cart failed: ${error.message}`);
+            }
+        }
+
+        // Quick test functions
+        async function quickTest(type) {
+            if (!authToken) {
+                log('❌ Please authenticate first');
+                return;
+            }
+
+            switch(type) {
+                case 'inventory':
+                    // Quick inventory update
+                    document.getElementById('testProductId').value = Math.floor(Math.random() * 5) + 1;
+                    document.getElementById('testStock').value = Math.floor(Math.random() * 100) + 10;
+                    document.getElementById('testPrice').value = (Math.random() * 500 + 50).toFixed(2);
+                    await updateProduct();
+                    break;
+                    
+                case 'cart':
+                    // Quick cart addition
+                    document.getElementById('cartProductId').value = Math.floor(Math.random() * 5) + 1;
+                    document.getElementById('cartQuantity').value = Math.floor(Math.random() * 5) + 1;
+                    await addToCart();
+                    break;
+                    
+                case 'multiple':
+                    // Multiple rapid events
+                    log('🚀 Running multiple test events...');
+                    for (let i = 0; i < 3; i++) {
+                        setTimeout(async () => {
+                            document.getElementById('testProductId').value = Math.floor(Math.random() * 5) + 1;
+                            document.getElementById('testStock').value = Math.floor(Math.random() * 100) + 10;
+                            await updateProduct();
+                        }, i * 1000);
+                        
+                        setTimeout(async () => {
+                            document.getElementById('cartProductId').value = Math.floor(Math.random() * 5) + 1;
+                            document.getElementById('cartQuantity').value = Math.floor(Math.random() * 3) + 1;
+                            await addToCart();
+                        }, i * 1000 + 500);
+                    }
+                    break;
+            }
+        }
+
+        // Auto-initialize when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize with event count 1 since we already have initial message
+            eventCount = 1;
+            document.getElementById('eventCount').textContent = eventCount;
+            
+            setTimeout(() => {
+                log('🔄 Starting auto-login process...');
+                autoLogin();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>
