@@ -46,7 +46,7 @@ const corsOptions = {
 
     const allowedOrigins = process.env.NODE_ENV === 'production' 
       ? getOriginsFromEnv('PRODUCTION_ORIGINS', [
-          'https://demo.com',
+          'https://gouri-medable-assessment.onrender.com',
           'https://www.demo.com',
           'https://admin.demo.com'
         ])
@@ -136,28 +136,28 @@ async function startServer() {
   try {
     // Initialize database
     await initializeDatabase();
-    console.log('✅ Database initialized successfully');
+    console.log('Database initialized successfully');
     
     // Start rate limit cleanup
     startRateLimitCleanup();
-    console.log('✅ Rate limit cleanup started');
+    console.log('Rate limit cleanup started');
     
     // Initialize WebSocket server
     initializeWebSocket(server);
-    console.log('✅ WebSocket server initialized');
+    console.log('WebSocket server initialized');
     
     // Start server
     server.listen(PORT, () => {
-      console.log(`🛒 Assessment 2: E-commerce Product API running on http://localhost:${PORT}`);
-      console.log(`📋 View instructions: http://localhost:${PORT}`);
-      console.log(`🔒 CORS configured for ${process.env.NODE_ENV || 'development'} environment`);
-      console.log(`🚦 Rate limiting enabled`);
-      console.log(`💾 Database persistence active`);
-      console.log(`📊 Performance metrics collection enabled`);
-      console.log(`🔍 Advanced search with faceted filtering available`);
-      console.log(`🤖 Product recommendation engine active`);
-      console.log(`📤 Product catalog export functionality enabled`);
-      console.log(`🔌 Real-time WebSocket updates active`);
+      console.log(`Assessment 2: E-commerce Product API running on http://localhost:${PORT}`);
+      console.log(`View instructions: http://localhost:${PORT}`);
+      console.log(`CORS configured for ${process.env.NODE_ENV || 'development'} environment`);
+      console.log(`Rate limiting enabled`);
+      console.log(`Database persistence active`);
+      console.log(`Performance metrics collection enabled`);
+      console.log(`Advanced search with faceted filtering available`);
+      console.log(`Product recommendation engine active`);
+      console.log(`Product catalog export functionality enabled`);
+      console.log(`Real-time WebSocket updates active`);
     });
 
     // Graceful shutdown
