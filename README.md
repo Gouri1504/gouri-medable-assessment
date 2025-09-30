@@ -24,59 +24,127 @@ npm install
 npm run dev
 ```
 
-The API will be available at `http://localhost:8888`
+The API will be available at `http://localhost:3002`
 
 ## 📚 API Documentation
 
-### Product Management
+This documents all current endpoints, required auth, and roles.
 
-#### GET /api/products
-Get paginated list of products with search and filtering
+### Auth
+- POST `/api/auth/register` — Register (public)
+- POST `/api/auth/login` — Login, returns JWT (public)
+- GET `/api/auth/users` — List demo users (public)
+- GET `/api/auth/verify` — Verify token (auth)
+- GET `/api/auth/profile` — Get profile (auth)
+- PUT `/api/auth/profile` — Update profile (auth)
+- GET `/api/auth/admin/users` — List users (admin)
+- GET `/api/auth/admin-data` — Example admin-only data (admin)
+
+Examples:
 ```bash
-# Basic usage
-curl "http://localhost:8888/api/products"
+curl -X POST http://localhost:3002/api/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"identifier":"admin","password":"Admin@123"}'
 
-# With pagination and search
-curl "http://localhost:8888/api/products?page=1&limit=10&search=electronics&category=Electronics"
-
-# Try the admin parameter (security issue!)
-curl "http://localhost:8888/api/products?admin=true"
+curl -H "Authorization: Bearer <JWT>" http://localhost:3002/api/auth/verify
 ```
 
-#### GET /api/products/:id
-Get single product by ID
-```bash
-curl "http://localhost:8888/api/products/1"
+### Product Management (auth required)
 
-# Try internal parameter (security issue!)
-curl "http://localhost:8888/api/products/1?internal=yes"
-```
+- GET `/api/products` — List with search/filters/sort/pagination (any role)
+  - Query: `page,limit,search,category,brand,minPrice,maxPrice,minRating,inStock,sortBy,sortOrder`
+  - Admin-only opt-in: `internal=true` to include internal fields
+- GET `/api/products/:productId` — Product detail (any role)
+  - Admin-only opt-in: `internal=true` to include internal fields
+- GET `/api/products/facets` — Facet metadata (any role)
+- GET `/api/products/:productId/recommendations` — Recommendations (any role)
+- GET `/api/products/trending/products` — Trending (any role)
+- POST `/api/products` — Create (admin)
+- PUT `/api/products/:productId` — Update (admin)
+- DELETE `/api/products/:productId` — Delete (admin)
+- GET `/api/products/export/:format` — Export `csv|json` (admin)
 
-#### POST /api/products
-Create new product
+Internal field behavior:
+- Public fields (all roles): `id,name,description,price,category,brand,stock,rating,tags,createdAt`
+- Internal fields (admins only, and only when `?internal=true`): `{ internal: { costPrice, supplier, internalNotes, adminOnly } }`
+
+Examples:
 ```bash
-curl -X POST "http://localhost:8888/api/products" \
-  -H "Content-Type: application/json" \
+# List products (customer)
+curl -H "Authorization: Bearer <JWT_CUSTOMER>" \
+  "http://localhost:3002/api/products?search=laptop&limit=10"
+
+# List with internals (admin, explicit)
+curl -H "Authorization: Bearer <JWT_ADMIN>" \
+  "http://localhost:3002/api/products?limit=5&internal=true"
+
+# Detail with internals (admin, explicit)
+curl -H "Authorization: Bearer <JWT_ADMIN>" \
+  "http://localhost:3002/api/products/1?internal=true"
+
+# Create (admin)
+curl -X POST http://localhost:3002/api/products \
+  -H 'Authorization: Bearer <JWT_ADMIN>' -H 'Content-Type: application/json' \
   -d '{"name":"New Product","price":99.99,"category":"Electronics"}'
 ```
 
-### Cart Management
+### Cart Management (auth; roles: customer, admin)
 
-#### GET /api/cart
-Get user's cart
-```bash
-curl "http://localhost:8888/api/cart" \
-  -H "X-User-Id: user123"
-```
+- GET `/api/cart` — Get authenticated user's cart
+- POST `/api/cart` — Add `{ productId, quantity }`
+- PUT `/api/cart` — Update `{ productId, quantity }` (0 removes)
+- DELETE `/api/cart` — Remove item (query `productId`)
+- DELETE `/api/cart/clear` — Clear whole cart
 
-#### POST /api/cart
-Add item to cart
+Examples:
 ```bash
-curl -X POST "http://localhost:8888/api/cart" \
-  -H "Content-Type: application/json" \
-  -H "X-User-Id: user123" \
+curl -H "Authorization: Bearer <JWT>" http://localhost:3002/api/cart
+
+curl -X POST http://localhost:3002/api/cart \
+  -H 'Authorization: Bearer <JWT>' -H 'Content-Type: application/json' \
   -d '{"productId":"1","quantity":2}'
+
+curl -X PUT http://localhost:3002/api/cart \
+  -H 'Authorization: Bearer <JWT>' -H 'Content-Type: application/json' \
+  -d '{"productId":"1","quantity":3}'
+
+curl -X DELETE "http://localhost:3002/api/cart?productId=1" \
+  -H 'Authorization: Bearer <JWT>'
+
+curl -X DELETE http://localhost:3002/api/cart/clear \
+  -H 'Authorization: Bearer <JWT>'
 ```
+
+### Metrics (auth; admin noted)
+
+- GET `/api/metrics/summary` — Summary (admin)
+- GET `/api/metrics/endpoint/{METHOD%20/path}` — Endpoint metrics (admin)
+- GET `/api/metrics/health` — Health + basic metrics (auth)
+- POST `/api/metrics/reset` — Reset metrics (admin)
+- GET `/api/metrics/stream` — SSE stream (admin)
+
+Examples:
+```bash
+curl -H "Authorization: Bearer <JWT_ADMIN>" http://localhost:3002/api/metrics/summary
+curl -H "Authorization: Bearer <JWT_ADMIN>" \
+  "http://localhost:3002/api/metrics/endpoint/GET%20/api/products"
+```
+
+### Secret Endpoint (admin only)
+
+- GET `/api/product_secret_endpoint` — Mock profit data (puzzle)
+  - Still requires admin JWT; accepts additional puzzle access methods (`Authorization: Bearer secret-admin-token`, `X-API-Key: admin-api-key-2024`, or `?secret=profit-data`).
+
+Example:
+```bash
+curl -H "Authorization: Bearer <JWT_ADMIN>" \
+     -H "X-API-Key: admin-api-key-2024" \
+     http://localhost:3002/api/product_secret_endpoint
+```
+
+### Server Health (public)
+
+- GET `/health` — Service liveness probe
 
 ## 🐛 PERFORMANCE ISSUES - FIXED ✅
 
@@ -601,8 +669,8 @@ ADMIN_RATE_LIMIT_WINDOW_MS=300000
 ADMIN_RATE_LIMIT_MAX_REQUESTS=20
 
 # CORS/WS
-DEV_ORIGINS=http://localhost:3000,http://localhost:8888
-WS_DEV_ORIGINS=http://localhost:3000,http://localhost:8888
+DEV_ORIGINS=http://localhost:3000,http://localhost:3002
+WS_DEV_ORIGINS=http://localhost:3000,http://localhost:3002
 
 # Auth strength
 BCRYPT_SALT_ROUNDS=12
@@ -624,6 +692,885 @@ curl -X POST http://localhost:3002/api/products \
   -H 'Authorization: Bearer <JWT>' -H 'Content-Type: application/json' \
   -d '{"name":"New Product","price":99.99,"category":"Electronics"}'
 ```
+
+## 🛠️ HOW WE SOLVED IT - DETAILED IMPLEMENTATION GUIDE
+
+This section provides a comprehensive walkthrough of our solution approach, showing exactly how we transformed a vulnerable, slow API into a production-ready e-commerce backend.
+
+### 🏗️ Our Solution Architecture
+
+We implemented a **layered security and performance architecture** with the following components:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    CLIENT LAYER                             │
+├─────────────────────────────────────────────────────────────┤
+│  Rate Limiting → CORS → Authentication → Authorization      │
+├─────────────────────────────────────────────────────────────┤
+│              BUSINESS LOGIC LAYER                           │
+├─────────────────────────────────────────────────────────────┤
+│    Caching → Input Validation → Database Operations        │
+├─────────────────────────────────────────────────────────────┤
+│                  PERSISTENCE LAYER                          │
+│              SQLite + WebSocket + Metrics                   │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 🔐 Step 1: Security Implementation
+
+#### 1.1 JWT-Based Authentication System
+
+**Problem**: No authentication meant anyone could access admin features.
+**Our Solution**: Comprehensive JWT authentication with role-based access control.
+
+```javascript
+// File: middleware/authenticate_token.js
+const authenticateToken = (req, res, next) => {
+  try {
+    const JWT_SECRET = process.env.JWT_SECRET;
+    
+    // Fail fast if JWT_SECRET is missing
+    if (!JWT_SECRET) {
+      console.error('FATAL ERROR: JWT_SECRET environment variable is not set');
+      return res.status(500).json({ error: 'Server configuration error' });
+    }
+
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (!token) return res.status(401).json({ error: 'Access token required' });
+
+    jwt.verify(token, JWT_SECRET, (err, user) => {
+      if (err) return res.status(403).json({ error: 'Invalid or expired token' });
+      req.user = user; // Attach verified user to request
+      next();
+    });
+  } catch (error) {
+    console.error('Token middleware error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+```
+
+**Key Benefits:**
+- Environment-based secret management (no hardcoded secrets)
+- Automatic token validation on every protected route
+- Graceful error handling without exposing stack traces
+
+#### 1.2 Role-Based Authorization
+
+**Problem**: Even authenticated users shouldn't access admin-only features.
+**Our Solution**: Granular role-based permissions.
+
+```javascript
+// File: middleware/authenticate_token.js
+export const authorizeRole = (roles = []) => (req, res, next) => {
+  if (!roles.includes(req.user.role)) {
+    return res.status(403).json({ error: 'Forbidden: insufficient privileges' });
+  }
+  next();
+};
+
+// Usage Example in routes/products.js
+router.post('/', 
+  adminRateLimit,                    // Rate limiting for admin operations
+  authorizeRole(['admin']),          // Only admins can create products
+  validateProductData,               // Input validation
+  async (req, res) => {
+    // Product creation logic
+  }
+);
+```
+
+#### 1.3 Comprehensive Input Validation
+
+**Problem**: No input validation allowed malicious data injection.
+**Our Solution**: Multi-layer validation using the `validator` library.
+
+```javascript
+// File: routes/products.js
+function validateProductData(req, res, next) {
+  const { name, price, category, description } = req.body;
+  
+  // Name validation
+  if (!name || !validator.isLength(name, { min: 1, max: 100 })) {
+    return res.status(400).json({ error: 'Product name is required and must be 1-100 characters' });
+  }
+  
+  // Price validation
+  if (!price || !validator.isFloat(price.toString(), { min: 0 })) {
+    return res.status(400).json({ error: 'Price must be a positive number' });
+  }
+  
+  // Category validation
+  if (!category || !validator.isLength(category, { min: 1, max: 50 })) {
+    return res.status(400).json({ error: 'Category is required and must be 1-50 characters' });
+  }
+  
+  // Description validation (optional field)
+  if (description && !validator.isLength(description, { max: 500 })) {
+    return res.status(400).json({ error: 'Description must be less than 500 characters' });
+  }
+  
+  next();
+}
+
+// Product ID validation to prevent injection attacks
+router.get('/:productId', async (req, res) => {
+  const { productId } = req.params;
+  
+  // Strict alphanumeric validation
+  if (!productId || !validator.isAlphanumeric(productId, 'en-US', { ignore: '-_' })) {
+    return res.status(400).json({ error: 'Invalid product ID format' });
+  }
+
+  // Additional security check for malicious patterns
+  if (productId.includes('<script>') || productId.includes('DROP') || productId.length > 50) {
+    console.warn('Malicious input detected:', productId);
+    return res.status(400).json({ error: 'Invalid product ID' });
+  }
+  
+  // Safe to proceed with database query
+  const product = await productDB.getProduct(productId);
+});
+```
+
+#### 1.4 Advanced Rate Limiting System
+
+**Problem**: API was vulnerable to abuse and DDoS attacks.
+**Our Solution**: Database-backed, endpoint-specific rate limiting.
+
+```javascript
+// File: middleware/rate_limit.js
+class DatabaseStore {
+  constructor(windowMs, maxRequests) {
+    this.windowMs = windowMs;
+    this.maxRequests = maxRequests;
+  }
+
+  async increment(key) {
+    try {
+      const [ip, endpoint] = key.split(':');
+      const result = await rateLimitDB.checkRateLimit(
+        ip, endpoint, this.maxRequests, this.windowMs
+      );
+      
+      return {
+        totalHits: result.requests,
+        resetTime: new Date(result.resetTime)
+      };
+    } catch (error) {
+      // Fail open - allow request if database fails
+      return { totalHits: 1, resetTime: new Date(Date.now() + this.windowMs) };
+    }
+  }
+}
+
+// Different limits for different endpoint types
+export const generalRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100,                 // 100 requests per window
+  store: new DatabaseStore(15 * 60 * 1000),
+  keyGenerator: (req) => `${req.ip}:general`
+});
+
+export const authRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10,                  // Only 10 auth attempts per window
+  store: new DatabaseStore(15 * 60 * 1000),
+  keyGenerator: (req) => `${req.ip}:auth`
+});
+
+export const adminRateLimit = rateLimit({
+  windowMs: 5 * 60 * 1000,  // 5 minutes
+  max: 20,                  // 20 admin operations per 5 minutes
+  store: new DatabaseStore(5 * 60 * 1000),
+  keyGenerator: (req) => `${req.ip}:admin`
+});
+```
+
+**Applied in server.js:**
+```javascript
+// File: server.js
+app.use(generalRateLimit);                    // Applied to all routes
+app.use('/api/auth', authRateLimit, authRoutes);      // Stricter for auth
+app.use('/api/products', authenticateToken, productsRoutes); // Auth required
+```
+
+### ⚡ Step 2: Performance Optimization
+
+#### 2.1 Database Persistence Strategy
+
+**Problem**: 1000 products generated on every request caused massive memory leaks.
+**Our Solution**: SQLite database with one-time seeding and proper schema design.
+
+```javascript
+// File: database/db.js - Database Schema
+export function initializeDatabase() {
+  return new Promise((resolve, reject) => {
+    db.serialize(() => {
+      // Products table with proper indexing
+      db.run(`
+        CREATE TABLE IF NOT EXISTS products (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          description TEXT,
+          price REAL NOT NULL,
+          category TEXT,
+          brand TEXT,
+          stock INTEGER DEFAULT 0,
+          rating REAL DEFAULT 0,
+          tags TEXT,
+          cost_price REAL,
+          supplier TEXT,
+          internal_notes TEXT,
+          admin_only BOOLEAN DEFAULT 0,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+
+      // Carts table for persistence
+      db.run(`
+        CREATE TABLE IF NOT EXISTS carts (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id TEXT UNIQUE NOT NULL,
+          cart_data TEXT NOT NULL,
+          total REAL DEFAULT 0,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+
+      // Users table for authentication
+      db.run(`
+        CREATE TABLE IF NOT EXISTS users (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id TEXT UNIQUE NOT NULL,
+          username TEXT UNIQUE NOT NULL,
+          email TEXT UNIQUE NOT NULL,
+          password_hash TEXT NOT NULL,
+          role TEXT NOT NULL DEFAULT 'customer',
+          first_name TEXT,
+          last_name TEXT,
+          phone TEXT,
+          address TEXT,
+          city TEXT,
+          country TEXT,
+          postal_code TEXT,
+          is_active BOOLEAN DEFAULT 1,
+          email_verified BOOLEAN DEFAULT 0,
+          last_login DATETIME,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+    });
+  });
+}
+```
+
+**Smart Product Generation:**
+```javascript
+// File: routes/products.js
+async function generateProducts() {
+  try {
+    // Check if products already exist - avoid regeneration
+    const existingProducts = await productDB.getProducts(1, 0);
+    if (existingProducts.total > 0) {
+      console.log(`Found ${existingProducts.total} existing products in database`);
+      return; // Skip generation if products exist
+    }
+    
+    console.log('Generating sample products and saving to database...');
+    const totalProducts = parseInt(process.env.SAMPLE_PRODUCTS_COUNT) || 1000;
+    
+    for (let i = 1; i <= totalProducts; i++) {
+      const product = {
+        id: i.toString(),
+        name: `Product ${i}`,
+        description: `This is product number ${i} with amazing features`,
+        price: Math.floor(Math.random() * 1000) + 10,
+        category: categories[Math.floor(Math.random() * categories.length)],
+        brand: brands[Math.floor(Math.random() * brands.length)],
+        stock: Math.floor(Math.random() * 100),
+        rating: parseFloat((Math.random() * 5).toFixed(1)),
+        tags: [`tag${i}`, `feature${i % 10}`]
+      };
+      
+      await productDB.saveProduct(product); // Save to database
+    }
+    
+    console.log(`✅ ${totalProducts} sample products generated and saved to database`);
+  } catch (error) {
+    console.error('Error generating products:', error);
+  }
+}
+
+// Called only once on startup
+generateProducts();
+```
+
+#### 2.2 Advanced Search and Caching System
+
+**Problem**: Linear search through arrays was extremely slow.
+**Our Solution**: Database-powered search with intelligent caching.
+
+```javascript
+// File: database/db.js - Advanced Search Implementation
+getProducts: (limit = 20, offset = 0, filters = {}) => {
+  return new Promise((resolve, reject) => {
+    let query = 'SELECT * FROM products WHERE 1=1';
+    let countQuery = 'SELECT COUNT(*) as total FROM products WHERE 1=1';
+    const params = [];
+    
+    // Advanced fuzzy search with multiple terms
+    if (filters.search) {
+      const searchTerms = filters.search.toLowerCase().split(' ').filter(term => term.length > 0);
+      if (searchTerms.length > 0) {
+        const searchConditions = searchTerms.map(() => 
+          '(LOWER(name) LIKE ? OR LOWER(description) LIKE ? OR LOWER(brand) LIKE ? OR LOWER(tags) LIKE ?)'
+        ).join(' AND ');
+        
+        query += ` AND (${searchConditions})`;
+        countQuery += ` AND (${searchConditions})`;
+        
+        searchTerms.forEach(term => {
+          const fuzzyTerm = `%${term}%`;
+          params.push(fuzzyTerm, fuzzyTerm, fuzzyTerm, fuzzyTerm);
+        });
+      }
+    }
+    
+    // Faceted filtering
+    if (filters.category) {
+      query += ' AND category = ?';
+      countQuery += ' AND category = ?';
+      params.push(filters.category);
+    }
+    
+    if (filters.brand) {
+      query += ' AND brand = ?';
+      countQuery += ' AND brand = ?';
+      params.push(filters.brand);
+    }
+    
+    // Price range filtering
+    if (filters.minPrice) {
+      query += ' AND price >= ?';
+      countQuery += ' AND price >= ?';
+      params.push(parseFloat(filters.minPrice));
+    }
+    
+    if (filters.maxPrice) {
+      query += ' AND price <= ?';
+      countQuery += ' AND price <= ?';
+      params.push(parseFloat(filters.maxPrice));
+    }
+    
+    // Rating filtering
+    if (filters.minRating) {
+      query += ' AND rating >= ?';
+      countQuery += ' AND rating >= ?';
+      params.push(parseFloat(filters.minRating));
+    }
+    
+    // Stock filtering
+    if (filters.inStock) {
+      query += ' AND stock > 0';
+      countQuery += ' AND stock > 0';
+    }
+    
+    // Smart sorting
+    if (filters.sortBy) {
+      const allowedSorts = ['name', 'price', 'rating', 'created_at', 'stock'];
+      if (allowedSorts.includes(filters.sortBy)) {
+        const order = filters.sortOrder === 'desc' ? 'DESC' : 'ASC';
+        query += ` ORDER BY ${filters.sortBy} ${order}`;
+      }
+    } else {
+      // Default relevance-based sorting for search queries
+      if (filters.search) {
+        query += ' ORDER BY (CASE WHEN LOWER(name) LIKE ? THEN 1 ELSE 2 END), rating DESC';
+        params.push(`%${filters.search.toLowerCase()}%`);
+      }
+    }
+    
+    query += ' LIMIT ? OFFSET ?';
+    params.push(limit, offset);
+    
+    // Execute queries and return results
+    // ... query execution logic
+  });
+}
+```
+
+**Multi-Layer Caching Strategy:**
+```javascript
+// File: routes/products.js
+let productsCache = new Map(); // In-memory cache
+const CACHE_TTL = parseInt(process.env.PRODUCTS_CACHE_TTL_MS) || 5 * 60 * 1000; // 5 minutes
+
+router.get('/', async (req, res) => {
+  try {
+    // Create intelligent cache key
+    const cacheKey = `${search || ''}-${category || ''}-${brand || ''}-${minPrice || ''}-${maxPrice || ''}-${minRating || ''}-${inStock}-${sortBy}-${sortOrder}-${page}-${limit}`;
+    
+    let result;
+    if (productsCache.has(cacheKey)) {
+      result = productsCache.get(cacheKey); // Cache hit
+    } else {
+      result = await productDB.getProducts(limit, offset, filters); // Database query
+      
+      // Cache the results with TTL
+      productsCache.set(cacheKey, result);
+      setTimeout(() => productsCache.delete(cacheKey), CACHE_TTL);
+    }
+
+    // HTTP caching headers for client-side caching
+    res.set({
+      'Cache-Control': 'public, max-age=300', // 5 minutes client cache
+      'X-Performance-Optimized': 'true',
+      'X-Database-Powered': 'true',
+      'X-Advanced-Search': 'enabled'
+    });
+
+    res.json({
+      products: result.products.map(product => ({
+        // Only return public fields - security by design
+        id: product.id,
+        name: product.name,
+        description: product.description,
+        price: product.price,
+        category: product.category,
+        brand: product.brand,
+        stock: product.stock,
+        rating: product.rating,
+        tags: product.tags,
+        createdAt: product.created_at
+        // Internal fields (cost_price, supplier, etc.) never exposed
+      })),
+      pagination: {
+        currentPage: validPage,
+        totalPages: totalPages,
+        totalItems: totalItems,
+        itemsPerPage: limit,
+        hasNextPage: validPage < totalPages,
+        hasPreviousPage: validPage > 1
+      }
+    });
+  } catch (error) {
+    console.error('Products endpoint error:', error);
+    res.status(500).json({ 
+      error: 'Internal server error',
+      message: 'Unable to retrieve products at this time'
+    });
+  }
+});
+```
+
+#### 2.3 Cart Performance Optimization
+
+**Problem**: Cart totals recalculated on every operation, no persistence.
+**Our Solution**: Cached calculations with database persistence.
+
+```javascript
+// File: routes/cart.js
+const cartTotalsCache = new Map(); // Cache for cart totals
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+function calculateCartTotal(userId, cart) {
+  // Check cache first
+  if (cartTotalsCache.has(userId)) {
+    const cached = cartTotalsCache.get(userId);
+    if (Date.now() - cached.timestamp < CACHE_TTL) {
+      return cached.total; // Return cached result
+    }
+  }
+
+  // Calculate total only if not cached
+  let total = 0;
+  cart.items.forEach(item => {
+    const price = productPrices[item.productId] || 0;
+    total += price * item.quantity;
+  });
+
+  // Cache the result
+  cartTotalsCache.set(userId, {
+    total: total,
+    timestamp: Date.now()
+  });
+
+  return total;
+}
+
+function clearCartCache(userId) {
+  cartTotalsCache.delete(userId); // Clear cache when cart changes
+}
+
+// Database-backed cart persistence
+router.post('/', cartRateLimit, authorizeRole(['customer','admin']), async (req, res) => {
+  try {
+    const userId = req.user.userId; // From JWT token - secure
+    const { productId, quantity = 1 } = req.body;
+    
+    // Load cart from database
+    let cart = await cartDB.getCart(userId);
+    if (!cart) {
+      cart = { items: [], total: 0, createdAt: new Date().toISOString() };
+    }
+    
+    // Update cart logic...
+    
+    // Clear cache and recalculate
+    clearCartCache(userId);
+    cart.total = calculateCartTotal(userId, cart);
+    
+    // Save to database
+    await cartDB.saveCart(userId, { items: cart.items }, cart.total);
+    
+    // Broadcast real-time update via WebSocket
+    broadcastCartUpdate(userId, {
+      action: 'item_added',
+      cart: {
+        items: cart.items.map(item => ({
+          productId: item.productId,
+          quantity: item.quantity,
+          price: productPrices[item.productId] || 0,
+          subtotal: (productPrices[item.productId] || 0) * item.quantity
+        })),
+        total: cart.total,
+        itemCount: cart.items.length
+      },
+      addedItem: { productId, quantity }
+    });
+
+    res.json({
+      message: 'Item added to cart',
+      cart: cartData.cart,
+      addedItem: cartData.addedItem
+    });
+  } catch (error) {
+    console.error('Add to cart error:', error);
+    res.status(500).json({ 
+      error: 'Internal server error',
+      message: 'Unable to add item to cart at this time'
+    });
+  }
+});
+```
+
+### 🔄 Step 3: Real-Time Features
+
+#### 3.1 WebSocket Implementation
+
+**Problem**: No real-time updates for inventory or cart changes.
+**Our Solution**: Authenticated WebSocket server with room-based broadcasting.
+
+```javascript
+// File: middleware/websocket.js
+export const initializeWebSocket = (server) => {
+  io = new Server(server, {
+    cors: {
+      origin: wsOrigins,
+      methods: ["GET", "POST"]
+    }
+  });
+
+  // Authentication middleware for WebSocket connections
+  io.use((socket, next) => {
+    try {
+      const token = socket.handshake.auth.token;
+      if (!token) {
+        return next(new Error('Authentication token required'));
+      }
+
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      socket.userId = decoded.userId;
+      socket.userRole = decoded.role;
+      socket.username = decoded.username;
+      
+      console.log(`WebSocket connection authenticated: ${decoded.username} (${decoded.role})`);
+      next();
+    } catch (error) {
+      console.error('WebSocket authentication error:', error);
+      next(new Error('Invalid authentication token'));
+    }
+  });
+
+  // Handle WebSocket connections
+  io.on('connection', (socket) => {
+    console.log(`WebSocket connected: ${socket.username} (${socket.id})`);
+    
+    // Join user to their personal room for cart updates
+    socket.join(`user:${socket.userId}`);
+    
+    // Join admins to admin room for inventory updates
+    if (socket.userRole === 'admin') {
+      socket.join('admin');
+    }
+
+    // Handle inventory subscription
+    socket.on('subscribe_inventory', (data) => {
+      const { productIds } = data;
+      if (Array.isArray(productIds)) {
+        productIds.forEach(productId => {
+          socket.join(`product:${productId}`);
+        });
+        socket.emit('inventory_subscribed', {
+          productIds,
+          message: 'Subscribed to inventory updates',
+          timestamp: new Date().toISOString()
+        });
+      }
+    });
+  });
+};
+
+// Broadcast functions
+export const broadcastInventoryUpdate = (productId, inventoryData) => {
+  if (!io) return;
+  
+  io.to(`product:${productId}`).emit('inventory_update', {
+    productId,
+    ...inventoryData,
+    timestamp: new Date().toISOString()
+  });
+};
+
+export const broadcastCartUpdate = (userId, cartData) => {
+  if (!io) return;
+  
+  io.to(`user:${userId}`).emit('cart_update', {
+    ...cartData,
+    timestamp: new Date().toISOString()
+  });
+};
+```
+
+#### 3.2 Metrics and Monitoring
+
+**Problem**: No visibility into API performance and usage.
+**Our Solution**: Comprehensive metrics collection with real-time monitoring.
+
+```javascript
+// File: middleware/metrics.js
+const metricsStore = {
+  requests: new Map(),      // endpoint -> count
+  responseTimes: new Map(), // endpoint -> array of times
+  errors: new Map(),        // endpoint -> error count
+  activeConnections: 0,
+  startTime: Date.now()
+};
+
+export const metricsMiddleware = (req, res, next) => {
+  const startTime = Date.now();
+  const endpoint = `${req.method} ${req.route?.path || req.path}`;
+  
+  // Track active connections
+  metricsStore.activeConnections++;
+  
+  // Track request count
+  const currentCount = metricsStore.requests.get(endpoint) || 0;
+  metricsStore.requests.set(endpoint, currentCount + 1);
+  
+  // Override res.end to capture response time
+  const originalEnd = res.end;
+  res.end = function(...args) {
+    const responseTime = Date.now() - startTime;
+    
+    // Track response times
+    if (!metricsStore.responseTimes.has(endpoint)) {
+      metricsStore.responseTimes.set(endpoint, []);
+    }
+    const times = metricsStore.responseTimes.get(endpoint);
+    times.push(responseTime);
+    
+    // Keep only last 1000 response times per endpoint
+    if (times.length > 1000) {
+      times.shift();
+    }
+    
+    // Track errors (4xx, 5xx status codes)
+    if (res.statusCode >= 400) {
+      const errorCount = metricsStore.errors.get(endpoint) || 0;
+      metricsStore.errors.set(endpoint, errorCount + 1);
+    }
+    
+    // Decrease active connections
+    metricsStore.activeConnections--;
+    
+    // Add performance headers
+    res.set({
+      'X-Response-Time': `${responseTime}ms`,
+      'X-Request-ID': `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    });
+    
+    originalEnd.apply(this, args);
+  };
+  
+  next();
+};
+```
+
+### 🎨 Step 4: User Interface Enhancement
+
+**Problem**: Admin panel had hardcoded credentials and poor UX.
+**Our Solution**: Secure, user-friendly admin interface.
+
+```html
+<!-- File: public/admin-panel.html - Secure Login Form -->
+<div class="subsection">
+    <h4><i class="fas fa-key"></i> Login</h4>
+    <p class="help-text">Enter your credentials and click Login. Use the seeded accounts or your own.</p>
+    <div class="form-group">
+        <label for="identifier"><i class="fas fa-user"></i> Username or Email</label>
+        <input type="text" id="identifier" placeholder="e.g., admin or admin@example.com">
+        <small class="help-text">Default usernames: admin, customer, guest</small>
+    </div>
+    <div class="form-group">
+        <label for="password"><i class="fas fa-lock"></i> Password</label>
+        <input type="password" id="password" placeholder="Enter your password">
+        <small class="help-text">Seeded passwords: Admin@123, Customer@123, Guest@123</small>
+    </div>
+    <div class="input-group">
+        <button onclick="autoLogin()" class="btn btn-primary">
+            <i class="fas fa-sign-in-alt"></i>
+            Login
+        </button>
+    </div>
+</div>
+```
+
+**Secure JavaScript Implementation:**
+```javascript
+// File: public/admin-panel.html - Secure Login Function
+async function autoLogin() {
+    try {
+        updateAuthStatus('connecting', '<i class="fas fa-spinner fa-spin"></i> Connecting...');
+        const idEl = document.getElementById('identifier');
+        const pwEl = document.getElementById('password');
+        const identifier = idEl ? idEl.value.trim() : '';
+        const password = pwEl ? pwEl.value : '';
+
+        if (!identifier || !password) {
+            log('❌ Please enter identifier and password');
+            updateAuthStatus('error', '<i class="fas fa-exclamation-triangle"></i> Missing credentials');
+            return;
+        }
+
+        const response = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ 
+                identifier: identifier,
+                password: password
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            authToken = data.token;
+            updateAuthStatus('connected', `<i class="fas fa-check-circle"></i> ${data.user.username} (${data.user.role})`);
+            log(`✅ Authenticated as ${data.user.username} (${data.user.role})`);
+            
+            // Auto-connect to WebSocket after successful login
+            setTimeout(() => connect(), 500);
+        } else {
+            throw new Error(data.error || 'Login failed');
+        }
+    } catch (error) {
+        log(`❌ Login failed: ${error.message}`);
+        updateAuthStatus('error', `<i class="fas fa-exclamation-triangle"></i> Auth failed`);
+    }
+}
+```
+
+### 📊 Step 5: Monitoring and Observability
+
+Our solution includes comprehensive monitoring:
+
+1. **Performance Metrics**: Response times, request counts, error rates
+2. **Security Monitoring**: Rate limit violations, authentication failures
+3. **Business Metrics**: Product views, cart operations, user activity
+4. **Real-time Dashboards**: WebSocket connection stats, live event monitoring
+
+### 🔧 Environment Configuration
+
+```bash
+# File: .env - Production-Ready Configuration
+# Core Settings
+PORT=3002
+NODE_ENV=production
+JWT_SECRET=your-super-secure-jwt-secret-here
+JWT_EXPIRES_IN=24h
+
+# Database Configuration
+DB_PATH=./database/ecommerce.db
+
+# Performance Tuning
+SAMPLE_PRODUCTS_COUNT=1000
+PRODUCTS_CACHE_TTL_MS=300000
+
+# Rate Limiting (per IP)
+RATE_LIMIT_WINDOW_MS=900000        # 15 minutes
+RATE_LIMIT_MAX_REQUESTS=100        # 100 requests per window
+AUTH_RATE_LIMIT_MAX_REQUESTS=10    # 10 auth attempts per window
+ADMIN_RATE_LIMIT_MAX_REQUESTS=20   # 20 admin ops per 5 minutes
+
+# CORS Security
+DEV_ORIGINS=http://localhost:3000,http://localhost:3002
+PRODUCTION_ORIGINS=https://yourdomain.com,https://www.yourdomain.com
+
+# WebSocket Configuration
+WS_DEV_ORIGINS=http://localhost:3000,http://localhost:3002
+WS_PRODUCTION_ORIGINS=https://yourdomain.com,https://www.yourdomain.com
+
+# Security Settings
+BCRYPT_SALT_ROUNDS=12
+```
+
+### 🚀 Deployment and Testing
+
+**Local Development:**
+```bash
+# Install dependencies
+npm install
+
+# Set up environment
+cp env.example .env
+# Edit .env with your values
+
+# Start development server
+npm run dev
+
+# Server runs on http://localhost:3002
+# Admin panel: http://localhost:3002/admin-panel.html
+```
+
+**Testing the Implementation:**
+```bash
+# Test authentication
+curl -X POST http://localhost:3002/api/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"identifier":"admin","password":"Admin@123"}'
+
+# Test protected endpoints
+curl -H "Authorization: Bearer <JWT_TOKEN>" \
+  "http://localhost:3002/api/products?search=electronics&limit=10"
+
+# Test rate limiting
+for i in {1..15}; do curl http://localhost:3002/api/auth/users; done
+
+# Test WebSocket (using the admin panel)
+# Open http://localhost:3002/admin-panel.html
+# Login and test real-time features
+```
+
+This comprehensive solution transforms a vulnerable, slow API into a production-ready e-commerce backend with enterprise-grade security, performance, and monitoring capabilities.
 
 ## ⚡ Features to Implement
 
@@ -675,36 +1622,36 @@ The secret endpoint returns a time-based MD5 hash.
 ### Performance Testing
 ```bash
 # Test product generation performance
-time curl "http://localhost:8888/api/products"
+time curl "http://localhost:3002/api/products"
 
 # Test search performance with common terms
-time curl "http://localhost:8888/api/products?search=product"
+time curl "http://localhost:3002/api/products?search=product"
 
 # Test large result sets
-time curl "http://localhost:8888/api/products?limit=1000"
+time curl "http://localhost:3002/api/products?limit=1000"
 ```
 
 ### Security Testing
 ```bash
 # Test admin data exposure
-curl "http://localhost:8888/api/products?admin=true"
+curl "http://localhost:3002/api/products?admin=true"
 
 # Test internal data access
-curl "http://localhost:8888/api/products/1?internal=yes"
+curl "http://localhost:3002/api/products/1?internal=yes"
 
 # Test malicious product ID
-curl "http://localhost:8888/api/products/<script>alert('xss')</script>"
+curl "http://localhost:3002/api/products/<script>alert('xss')</script>"
 
 # Test secret endpoint access methods
 curl -H "Authorization: Bearer secret-admin-token" \
-     "http://localhost:8888/api/product_secret_endpoint"
+     "http://localhost:3002/api/product_secret_endpoint"
 ```
 
 ### Cart Security Testing
 ```bash
 # Test cross-user data access
-curl -H "X-User-Id: victim" "http://localhost:8888/api/cart"
-curl -H "X-User-Id: attacker" "http://localhost:8888/api/cart"
+curl -H "X-User-Id: victim" "http://localhost:3002/api/cart"
+curl -H "X-User-Id: attacker" "http://localhost:3002/api/cart"
 ```
 
 ## 📝 Expected Solutions
