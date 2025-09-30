@@ -2,6 +2,31 @@
 
 Welcome to the E-commerce Product API assessment! This project simulates a real-world e-commerce backend with **critical performance issues** and **security vulnerabilities** that you need to identify and fix.
 
+## Admin Panel
+
+The project includes an **Admin Panel** for managing and monitoring system activities.
+
+### Access
+
+🌐 **URL:** [Admin Panel](https://gouri-medable-assessment.onrender.com/admin-panel.html)
+
+### Credentials
+
+Use the following credentials to log in:
+
+* **Email:** `admin@example.com`
+* **Password:** `Admin@123`
+
+### Features
+
+* Secure admin authentication
+* Dashboard for stock management ( websocket implemented)
+
+---
+
+Do you want me to make this a **standalone README.md file** (with full project context), or should I just keep this as a small section you can paste into your existing README?
+
+
 ## 🎯 Objective
 
 Your mission is to:
