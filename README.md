@@ -22,9 +22,6 @@ Use the following credentials to log in:
 * Secure admin authentication
 * Dashboard for stock management ( websocket implemented)
 
----
-
-Do you want me to make this a **standalone README.md file** (with full project context), or should I just keep this as a small section you can paste into your existing README?
 
 
 ## 🎯 Objective
