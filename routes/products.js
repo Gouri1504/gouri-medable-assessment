@@ -158,6 +158,11 @@ router.get('/', async (req, res) => {
       setTimeout(() => productsCache.delete(cacheKey), CACHE_TTL);
     }
 
+    // Determine if requester is admin (controls internal field exposure)
+    const isAdmin = req.user && req.user.role === 'admin';
+    const wantsInternal = String(req.query.internal || '').toLowerCase() === 'true';
+    const includeInternal = isAdmin && wantsInternal;
+
     //Calculate pagination
     const totalItems = result.total;
     const totalPages = Math.ceil(totalItems / limit);
@@ -170,23 +175,37 @@ router.get('/', async (req, res) => {
       'X-Database-Powered': 'true',
       'X-Advanced-Search': 'enabled',
       'X-Faceted-Search': 'available',
-      'Cache-Control': 'public, max-age=300'
+      'Cache-Control': 'public, max-age=300',
+      'X-Internal-Fields': includeInternal ? 'included' : 'hidden'
     });
 
     res.json({
-      products: result.products.map(product => ({
-        //BUG FIXED: Only return public data - no conditional exposure
-        id: product.id,
-        name: product.name,
-        description: product.description,
-        price: product.price,
-        category: product.category,
-        brand: product.brand,
-        stock: product.stock,
-        rating: product.rating,
-        tags: product.tags,
-        createdAt: product.created_at
-      })),
+      products: result.products.map(product => {
+        // Public fields
+        const data = {
+          id: product.id,
+          name: product.name,
+          description: product.description,
+          price: product.price,
+          category: product.category,
+          brand: product.brand,
+          stock: product.stock,
+          rating: product.rating,
+          tags: product.tags,
+          createdAt: product.created_at
+        };
+
+        // Include internal fields only for admins AND when explicitly requested via ?internal=true
+        if (includeInternal) {
+          data.internal = {
+            costPrice: product.cost_price,
+            supplier: product.supplier,
+            internalNotes: product.internal_notes,
+            adminOnly: !!product.admin_only
+          };
+        }
+        return data;
+      }),
       pagination: {
         currentPage: validPage,
         totalPages: totalPages,
@@ -229,7 +248,7 @@ router.get('/:productId', async (req, res) => {
       return res.status(404).json({ error: 'Product not found' });
     }
 
-    // SECURITY FIX: Remove internal parameter - no conditional data exposure
+    // SECURITY FIX: Remove internal parameter - no conditional data exposure via query params
     const responseData = {
       id: product.id,
       name: product.name,
@@ -243,9 +262,23 @@ router.get('/:productId', async (req, res) => {
       createdAt: product.created_at
     };
 
+    // Include internal fields only for admins AND when explicitly requested via ?internal=true
+    const isAdmin = req.user && req.user.role === 'admin';
+    const wantsInternal = String(req.query.internal || '').toLowerCase() === 'true';
+    const includeInternal = isAdmin && wantsInternal;
+    if (includeInternal) {
+      responseData.internal = {
+        costPrice: product.cost_price,
+        supplier: product.supplier,
+        internalNotes: product.internal_notes,
+        adminOnly: !!product.admin_only
+      };
+    }
+
     res.set({
       'Cache-Control': 'public, max-age=300',
-      'X-Database-Powered': 'true'
+      'X-Database-Powered': 'true',
+      'X-Internal-Fields': includeInternal ? 'included' : 'hidden'
     });
 
     res.json(responseData);

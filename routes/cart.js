@@ -49,7 +49,7 @@ function clearCartCache(userId) {
 }
 
 // Get cart - SECURITY FIX: Authentication required
-router.get('/', cartRateLimit, authorizeRole(['customer , admin']), async (req, res) => {
+router.get('/', cartRateLimit, authorizeRole(['customer','admin']), async (req, res) => {
   try {
     // SECURITY FIX: Use authenticated user ID
     const userId = req.user.userId;
@@ -101,7 +101,7 @@ router.get('/', cartRateLimit, authorizeRole(['customer , admin']), async (req, 
 });
 
 // Add to cart - SECURITY FIX: Authentication required (Checking customer or admin role)
-router.post('/', cartRateLimit, authorizeRole(['customer , admin']), async (req, res) => {
+router.post('/', cartRateLimit, authorizeRole(['customer','admin']), async (req, res) => {
   try {
     const userId = req.user.userId;
     const { productId, quantity = 1 } = req.body;
@@ -185,7 +185,7 @@ router.post('/', cartRateLimit, authorizeRole(['customer , admin']), async (req,
 });
 
 // Update cart item - SECURITY FIX: Authentication required (Checking customer or admin role)
-router.put('/', cartRateLimit, authorizeRole(['customer , admin']), async (req, res) => {
+router.put('/', cartRateLimit, authorizeRole(['customer','admin']), async (req, res) => {
   try {
     const userId = req.user.userId;
     const { productId, quantity } = req.body;
@@ -250,7 +250,7 @@ router.put('/', cartRateLimit, authorizeRole(['customer , admin']), async (req, 
 });
 
 // Remove from cart - SECURITY FIX: Authentication required (Checking customer or admin role)
-router.delete('/', cartRateLimit, authorizeRole(['customer , admin']), async (req, res) => {
+router.delete('/', cartRateLimit, authorizeRole(['customer','admin']), async (req, res) => {
   try {
     const userId = req.user.userId;
     const { productId } = req.query;
@@ -309,7 +309,7 @@ router.delete('/', cartRateLimit, authorizeRole(['customer , admin']), async (re
 });
 
 // Clear entire cart - Additional feature
-router.delete('/clear', cartRateLimit, authorizeRole(['customer , admin']), async (req, res) => {
+router.delete('/clear', cartRateLimit, authorizeRole(['customer','admin']), async (req, res) => {
   try {
     const userId = req.user.userId;
     
