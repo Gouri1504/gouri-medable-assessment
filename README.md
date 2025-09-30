@@ -48,6 +48,94 @@ npm run dev
 
 The API will be available at `http://localhost:3002`
 
+# 🧩 Puzzles & Hidden Challenges
+
+This project includes a series of hidden puzzles designed to be discovered and solved while exploring the system. Each puzzle reveals clues that lead to the next challenge.
+
+---
+
+## 🔍 Puzzle 1: Base64 Header Decoder
+
+* **Location**: Check `/api/products` response headers
+* **Hint Header**: `X-Puzzle-Hint`
+* **Task**: Decode the Base64 string
+
+  ```bash
+  cHJvZHVjdF9zZWNyZXRfZW5kcG9pbnQ=
+  ```
+* **Decoded Result**:
+
+  ```
+  product_secret_endpoint
+  ```
+* **Revealed Endpoint**: `/api/product_secret_endpoint`
+
+---
+
+## 🕵️ Puzzle 2: Secret Product Endpoint
+
+The hidden endpoint contains **secret product data**.
+
+* **Access Methods** (all supported):
+
+  * **Authorization Header**:
+
+    ```http
+    Authorization: Bearer secret-admin-token
+    ```
+  * **API Key Header**:
+
+    ```http
+    x-api-key: admin-api-key-2024
+    ```
+  * **Query Parameter**:
+
+    ```
+    ?secret=profit-data
+    ```
+
+* **Reward**: Access to **internal profit margins** and **cost data**.
+
+✅ Successfully accessible through all three methods.
+
+---
+
+## 🔐 Puzzle 3: ROT13 Cipher
+
+The secret endpoint response includes a `finalPuzzle` field encrypted with ROT13.
+
+* **Message**:
+
+  ```js
+  const FINAL_PUZZLE = 'Pbatenghyngvbaf! Lbh sbhaq gur frperg cebqhpg qngn. Svany pyhrf: PURPX_NQZVA_CNARY_2024';
+  ```
+
+* **Decoded Result**:
+
+  ```
+  Congratulations! You found the secret product data.  
+  Final clues: CHECK_ADMIN_PANEL_2024
+  ```
+
+---
+
+## 🧮 Puzzle 4: Hash Challenge
+
+The secret endpoint also returns a **time-based MD5 hash**.
+
+* **Hash Generation Logic**:
+
+  ```js
+  const timeHash = crypto
+    .createHash('md5')
+    .update(new Date().toISOString().slice(0, 10)) // current date (YYYY-MM-DD)
+    .digest('hex')
+    .slice(0, 8);
+  ```
+
+✨ **Final Clue**: The puzzles ultimately point back to the Admin Panel → `CHECK_ADMIN_PANEL_2024`.
+
+
 ## 📚 API Documentation
 
 This documents all current endpoints, required auth, and roles.
