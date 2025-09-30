@@ -148,8 +148,6 @@ This documents all current endpoints, required auth, and roles.
 - GET `/api/auth/verify` — Verify token (auth)
 - GET `/api/auth/profile` — Get profile (auth)
 - PUT `/api/auth/profile` — Update profile (auth)
-- GET `/api/auth/admin/users` — List users (admin)
-- GET `/api/auth/admin-data` — Example admin-only data (admin)
 
 Examples:
 ```bash
@@ -167,13 +165,6 @@ curl -H "Authorization: Bearer <JWT>" http://localhost:3002/api/auth/verify
   - Admin-only opt-in: `internal=true` to include internal fields
 - GET `/api/products/:productId` — Product detail (any role)
   - Admin-only opt-in: `internal=true` to include internal fields
-- GET `/api/products/facets` — Facet metadata (any role)
-- GET `/api/products/:productId/recommendations` — Recommendations (any role)
-- GET `/api/products/trending/products` — Trending (any role)
-- POST `/api/products` — Create (admin)
-- PUT `/api/products/:productId` — Update (admin)
-- DELETE `/api/products/:productId` — Delete (admin)
-- GET `/api/products/export/:format` — Export `csv|json` (admin)
 
 Internal field behavior:
 - Public fields (all roles): `id,name,description,price,category,brand,stock,rating,tags,createdAt`
@@ -232,8 +223,7 @@ curl -X DELETE http://localhost:3002/api/cart/clear \
 - GET `/api/metrics/endpoint/{METHOD%20/path}` — Endpoint metrics (admin)
 - GET `/api/metrics/health` — Health + basic metrics (auth)
 - POST `/api/metrics/reset` — Reset metrics (admin)
-- GET `/api/metrics/stream` — SSE stream (admin)
-
+  
 Examples:
 ```bash
 curl -H "Authorization: Bearer <JWT_ADMIN>" http://localhost:3002/api/metrics/summary
